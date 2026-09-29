@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
 
@@ -25,8 +25,22 @@ export class SpacesService {
       where: { id: spaceId, userId },
     });
     if (!space) {
-      throw new Error('User does not have access to this space');
+      throw new ForbiddenException('User does not have access to this space');
     }
     return space;
+  }
+
+  async update(userId: string, id: string, dto: CreateSpaceDto) {
+    await this.ensureUserOwnsSpace(userId, id);
+    return this.prisma.space.update({ where: { id }, data: { name: dto.name } });
+  }
+
+  async remove(userId: string, id: string) {
+    await this.ensureUserOwnsSpace(userId, id);
+    // Chunks cascade from Resource; remove resources first.
+    await this.prisma.$transaction([
+      this.prisma.resource.deleteMany({ where: { spaceId: id } }),
+      this.prisma.space.delete({ where: { id } }),
+    ]);
   }
 }

@@ -14,6 +14,7 @@ export class ScrapeService {
   async scrapeAndProcess(url: string): Promise<{
     title: string;
     contentPreview: string;
+    text: string;
   }> {
     let browser;
     try {
@@ -26,8 +27,6 @@ export class ScrapeService {
 
       // Extract text content directly from the page
       const text = await page.evaluate(() => document.body.innerText);
-
-      await browser.close();
 
       // Create a LangChain document from the extracted text
       const docs = [
@@ -50,6 +49,7 @@ export class ScrapeService {
       return {
         title,
         contentPreview: preview,
+        text,
       };
     } catch (error) {
       this.logger.error(`Scrape failed for ${url}:`, error);

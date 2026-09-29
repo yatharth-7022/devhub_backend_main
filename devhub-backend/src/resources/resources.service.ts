@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { SpacesService } from 'src/spaces/spaces.service';
 import { CreateResourceDto } from './dto/create-resource.dto';
@@ -7,6 +7,9 @@ import { CreateFromUrlDto } from './dto/create-from-url.dto';
 import { ListResourcesQueryDto } from './dto/list-resources.query.dto';
 import { PageResult } from 'src/common/pagination';
 import { Prisma } from '@prisma/client';
+import { IngestService } from 'src/ai/ingest.service';
+import { EnrichService } from 'src/ai/enrich.service';
+import { UpdateResourceDto } from './dto/update-resource.dto';
 
 @Injectable()
 export class ResourcesService {
@@ -14,7 +17,21 @@ export class ResourcesService {
     private readonly prisma: PrismaService,
     private readonly spacesService: SpacesService,
     private readonly scrapeService: ScrapeService,
+    private readonly ingest: IngestService,
+    private readonly enrich: EnrichService,
   ) {}
+
+  private readonly logger = new Logger(ResourcesService.name);
+
+  /** Index failures must not lose the saved resource. */
+  private async safeIndex(id: string, title: string, text?: string | null) {
+    try {
+      if (text) await this.ingest.indexResource(id, title, text);
+    } catch (e) {
+      this.logger.error(`Indexing failed for ${id}: ${e}`);
+    }
+  }
+
 
   async createForUser(userId: string, dto: CreateResourceDto) {
     // Ensure the space belongs to the user
@@ -28,15 +45,20 @@ export class ResourcesService {
         tags: dto.tags,
       },
     });
+    await this.safeIndex(
+      resource.id,
+      resource.title,
+      dto.contentPreview,
+    );
     return resource;
   }
   async createFromUrl(userId: string, dto: CreateFromUrlDto) {
     // Ensure the space belongs to the user
     await this.spacesService.ensureUserOwnsSpace(userId, dto.spaceId);
 
-    const { title, contentPreview } = await this.scrapeService.scrapeAndProcess(
-      dto.url,
-    );
+    const { title, contentPreview, text } =
+      await this.scrapeService.scrapeAndProcess(dto.url);
+    const enrichment = await this.enrich.enrich(title, text).catch(() => null);
 
     const resource = await this.prisma.resource.create({
       data: {
@@ -44,10 +66,11 @@ export class ResourcesService {
         title,
         url: dto.url,
         contentPreview,
-        tags: [],
-        // pineconeId = null (W3)
+        tags: enrichment?.tags ?? [],
+        summary: enrichment?.summary,
       },
     });
+    await this.safeIndex(resource.id, title, text);
     return resource;
   }
   async findBySpaceForUser(userId: string, spaceId: string) {
@@ -164,5 +187,42 @@ export class ResourcesService {
       total,
       hasNextPage: skip + items.length < total,
     };
+  }
+
+  private async getOwned(userId: string, id: string) {
+    const resource = await this.prisma.resource.findUnique({ where: { id } });
+    if (!resource) throw new NotFoundException('Resource not found');
+    await this.spacesService.ensureUserOwnsSpace(userId, resource.spaceId);
+    return resource;
+  }
+
+  async findOne(userId: string, id: string) {
+    return this.getOwned(userId, id);
+  }
+
+  async update(userId: string, id: string, dto: UpdateResourceDto) {
+    const existing = await this.getOwned(userId, id);
+    const updated = await this.prisma.resource.update({
+      where: { id },
+      data: {
+        title: dto.title,
+        url: dto.url,
+        contentPreview: dto.contentPreview,
+        tags: dto.tags,
+      },
+    });
+    if (dto.contentPreview !== undefined || dto.title !== undefined) {
+      await this.safeIndex(
+        id,
+        updated.title,
+        updated.contentPreview ?? existing.contentPreview,
+      );
+    }
+    return updated;
+  }
+
+  async remove(userId: string, id: string) {
+    await this.getOwned(userId, id);
+    await this.prisma.resource.delete({ where: { id } }); // chunks cascade
   }
 }

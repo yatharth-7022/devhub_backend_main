@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { SpacesModule } from './spaces/spaces.module';
 import { ResourcesModule } from './resources/resources.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ResourcesModule } from './resources/resources.module';
     AuthModule,
     SpacesModule,
     ResourcesModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SpacesService } from './spaces.service';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -24,5 +24,20 @@ export class SpacesController {
   async findAll(@CurrentUser() user: JwtUserPayload) {
     const spaces = await this.spacesService.findAllForUser(user.sub);
     return ok(spaces);
+  }
+
+  @Put(':id')
+  async update(
+    @CurrentUser() user: JwtUserPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateSpaceDto,
+  ) {
+    return ok(await this.spacesService.update(user.sub, id, dto));
+  }
+
+  @Delete(':id')
+  async remove(@CurrentUser() user: JwtUserPayload, @Param('id') id: string) {
+    await this.spacesService.remove(user.sub, id);
+    return ok(null);
   }
 }

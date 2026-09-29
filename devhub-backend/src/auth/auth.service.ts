@@ -29,8 +29,8 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    // Log the new user in immediately: frontend expects { user, access_token }.
+    return this.login(user);
   }
 
   async validateUser(email: string, password: string): Promise<any> {

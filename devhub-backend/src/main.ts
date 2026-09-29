@@ -4,7 +4,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 4000;
   const app = await NestFactory.create(AppModule);
 
   // Enable global validation with transformation

@@ -2,11 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
   output   = "../node_modules/.prisma/client"
 }
 
@@ -37,7 +39,21 @@ model Resource {
   url            String?
   contentPreview String?
   tags           String[]
-  pineconeId     String?
+  summary        String?
+  status         String   @default("READY") // PROCESSING | READY | FAILED
+  chunks         ResourceChunk[]
   createdAt      DateTime @default(now())
+}
+
+model ResourceChunk {
+  id         String                       @id @default(cuid())
+  resourceId String
+  resource   Resource                     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  content    String
+  embedding  Unsupported("vector(1536)")?
+  createdAt  DateTime                     @default(now())
+
+  @@index([resourceId])
 }
 
