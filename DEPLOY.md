@@ -1,6 +1,7 @@
 # Deployment
 
-Neon (Postgres + pgvector) -> Render (backend, Docker) -> Vercel (frontend).
+Neon (Postgres + pgvector) -> Render free (backend, Docker) -> Vercel (frontend).
+Scraping is plain fetch + cheerio (no Chromium), so 512 MB is enough. JS-rendered pages scrape thin.
 
 1. **Neon**: create project, copy the pooled connection string (`?sslmode=require`).
    The migration runs `CREATE EXTENSION vector` automatically on first deploy.

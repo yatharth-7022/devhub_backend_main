@@ -1,6 +1,6 @@
-# Playwright base image ships Chromium + system deps; tag must match the playwright npm version.
-FROM mcr.microsoft.com/playwright:v1.63.0-noble AS build
+FROM node:22-slim AS build
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
@@ -8,15 +8,16 @@ COPY . .
 RUN DATABASE_URL=postgresql://x:x@localhost:5432/x npx prisma generate && npm run build \
  && npm prune --omit=dev --legacy-peer-deps
 
-FROM mcr.microsoft.com/playwright:v1.63.0-noble
+FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts /app/package.json ./
-# 7860 is the Hugging Face Spaces default; other hosts override PORT.
+# Hosts inject PORT; default matches Hugging Face Spaces.
 ENV PORT=7860
 EXPOSE 7860
-# Migrate, then serve. prisma CLI is a runtime dependency (prisma.config.ts imports it).
+# prisma CLI is a runtime dependency (prisma.config.ts imports it).
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

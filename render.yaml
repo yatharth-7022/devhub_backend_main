@@ -4,7 +4,7 @@ services:
     runtime: docker
     rootDir: devhub-backend
     dockerfilePath: ./Dockerfile
-    plan: starter # Chromium needs >= 1 GB RAM
+    plan: free
     healthCheckPath: /health
     branch: development
     envVars:
