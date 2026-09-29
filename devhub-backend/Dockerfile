@@ -15,6 +15,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts /app/package.json ./
-EXPOSE 4000
+# 7860 is the Hugging Face Spaces default; other hosts override PORT.
+ENV PORT=7860
+EXPOSE 7860
 # Migrate, then serve. prisma CLI is a runtime dependency (prisma.config.ts imports it).
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

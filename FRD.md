@@ -218,7 +218,7 @@ User: "save https://… to this space" → model calls `add_resource_from_url` �
 
 | # | Finding | Severity | Recommendation |
 |---|---|---|---|
-| 1 | `POST /users` is unauthenticated and appears to create a user **without hashing the password** (hashing happens only in `AuthService.register`). | **High** | Remove the route or route it through `AuthService.register`. |
+| 1 | `POST /users` is unauthenticated and creates a user **with the plaintext password** (confirmed: `UsersService.createUser` stores it as-is) (hashing happens only in `AuthService.register`). | **High** | Remove the route or route it through `AuthService.register`. |
 | 2 | `Resource.status` (`PROCESSING/READY/FAILED`) exists but is never set; ingestion is synchronous. | Medium | Move enrich+index to a background job and use the status field, or remove it. |
 | 3 | Keyword search results are ordered by `createdAt`, not relevance rank; no GIN index on the tsvector. | Medium | `ORDER BY ts_rank`, add GIN index. |
 | 4 | No vector index (HNSW/IVFFlat) on `embedding`; search is a sequential scan. | Medium | Add HNSW index before library grows. |
@@ -226,8 +226,7 @@ User: "save https://… to this space" → model calls `add_resource_from_url` �
 | 6 | Playwright launches a new Chromium per request with `--no-sandbox`; memory heavy. | Medium | Reuse a browser, cap concurrency. |
 | 7 | Chat history is client-supplied and not persisted. | Low | Add `Conversation`/`Message` tables if history is required. |
 | 8 | No email verification, password reset, or refresh tokens. | Medium | Add before public launch. |
-| 9 | Deleting a Space with resources: relations have no `onDelete: Cascade` — delete may fail on FK. | Medium | Add cascade or delete children explicitly. |
-| 10 | `contentPreview` chunks are duplicated (scrape splits, then ingest splits again). | Low | Reuse a single splitter. |
+| 9 | `contentPreview` chunks are duplicated (scrape splits, then ingest splits again). | Low | Reuse a single splitter. |
 
 ## 12. Future Scope
 Background ingestion queue with status polling; PDF/file upload; browser extension "Save to DevHub"; shareable/collaborative Spaces; hybrid (keyword + vector) search with reranking; saved chat threads; re-summarise / re-index actions; usage quotas per user.
