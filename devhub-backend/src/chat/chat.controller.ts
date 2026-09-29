@@ -6,6 +6,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -19,6 +20,7 @@ export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
   /** Server-sent events: token | tool_call | tool_result | sources | done | error */
+  @Throttle({ default: { ttl: 60_000, limit: 15 } })
   @Post('stream')
   async stream(
     @CurrentUser() user: JwtUserPayload,

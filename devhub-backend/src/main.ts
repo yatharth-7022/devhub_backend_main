@@ -17,13 +17,15 @@ async function bootstrap() {
 
   // Enable CORS for frontend communication
   app.enableCors({
-    origin: ['http://localhost:8080', 'http://127.0.0.1:8080'],
+    origin: (process.env.FRONTEND_ORIGIN ?? 'http://localhost:8080,http://127.0.0.1:8080')
+      .split(',')
+      .map((o) => o.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
 }
 bootstrap();

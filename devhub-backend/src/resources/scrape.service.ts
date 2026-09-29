@@ -2,6 +2,7 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright';
 import { Document } from '@langchain/core/documents';
+import { assertPublicUrl } from 'src/common/ssrf';
 
 @Injectable()
 export class ScrapeService {
@@ -18,9 +19,22 @@ export class ScrapeService {
   }> {
     let browser;
     try {
+      await assertPublicUrl(url);
       // Use Playwright to fetch and extract content
-      browser = await chromium.launch({ headless: true });
+      browser = await chromium.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-dev-shm-usage'],
+      });
       const page = await browser.newPage();
+      // Re-check every request (redirects, iframes, subresources) against SSRF rules.
+      await page.route('**/*', async (route) => {
+        try {
+          await assertPublicUrl(route.request().url());
+          await route.continue();
+        } catch {
+          await route.abort();
+        }
+      });
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
       const title = (await page.title()) || 'Untitled';
